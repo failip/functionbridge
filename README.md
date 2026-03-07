@@ -1,6 +1,10 @@
 # FunctionBridge
 
-![](./docs/assets/functionbridge-wordmark.svg)
+<p align="center">
+  <picture>
+    <img src="./docs/assets/functionbridge-wordmark.svg" alt="FunctionBridge Logo" width="500"/>
+  </picture>
+</p>
 
 ## Overview
 
