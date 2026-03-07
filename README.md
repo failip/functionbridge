@@ -6,6 +6,8 @@
   </picture>
 </p>
 
+![npm](https://img.shields.io/npm/v/functionbridge)
+
 ## Overview
 
 FunctionBridge enables LLMs to execute TypeScript and JavaScript in a secure
