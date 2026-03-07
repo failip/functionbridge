@@ -1,5 +1,7 @@
 # FunctionBridge
 
+![](./docs/assets/functionbridge-wordmark.svg)
+
 ## Overview
 
 FunctionBridge enables LLMs to execute TypeScript and JavaScript in a secure
