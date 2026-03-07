@@ -1,15 +1,17 @@
 # FunctionBridge
 
-<p align="center">
-  <picture>
-    <img src="./docs/assets/functionbridge-wordmark.svg" alt="FunctionBridge Logo" width="500"/>
-  </picture>
-</p>
-<p align="left" width="500">
-  <a href="https://www.npmjs.com/package/functionbridge">
-    <img src="https://img.shields.io/npm/v/functionbridge" alt="npm version" />
-  </a>
-</p>
+<div align="center">
+  <div style="width:500px;">
+    <picture>
+      <img src="./docs/assets/functionbridge-wordmark.svg" alt="FunctionBridge Logo" width="500"/>
+    </picture>
+    <div style="text-align:left; margin-top:8px;">
+      <a href="https://www.npmjs.com/package/functionbridge">
+        <img src="https://img.shields.io/npm/v/functionbridge" alt="npm version" />
+      </a>
+    </div>
+  </div>
+</div>
 
 ## Overview
 
