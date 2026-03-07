@@ -5,8 +5,11 @@
     <img src="./docs/assets/functionbridge-wordmark.svg" alt="FunctionBridge Logo" width="500"/>
   </picture>
 </p>
-
-![npm](https://img.shields.io/npm/v/functionbridge)
+<p align="left" width="500">
+  <a href="https://www.npmjs.com/package/functionbridge">
+    <img src="https://img.shields.io/npm/v/functionbridge" alt="npm version" />
+  </a>
+</p>
 
 ## Overview
 
