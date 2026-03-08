@@ -1,15 +1,16 @@
 # FunctionBridge
 
 <div align="center">
-    <picture>
-      <img src="./docs/assets/functionbridge-wordmark.svg" alt="FunctionBridge Logo" width="500"/>
-    </picture>
-    <div align="left">
-      <a href="https://www.npmjs.com/package/functionbridge">
-        <img src="https://img.shields.io/npm/v/functionbridge" alt="npm version" />
-      </a>
-    </div>
+<picture>
+<img src="./docs/assets/functionbridge-wordmark.svg" alt="FunctionBridge Logo" width="500"/>
+</picture>
+
+<a href="https://www.npmjs.com/package/functionbridge">
+<img src="https://img.shields.io/npm/v/functionbridge" alt="npm version" />
+</a>
 </div>
+
+---
 
 ## Overview
 
@@ -17,8 +18,6 @@ FunctionBridge enables LLMs to execute TypeScript and JavaScript in a secure
 browser sandbox and interact with frontend functionality through explicitly
 registered functions.
 
-It is designed for applications that want to expose rich client-side
-capabilities to an LLM without building a custom backend orchestration layer.
 Instead of registering many narrowly scoped tools, you expose a compact,
 programmable execution environment. The model writes code that coordinates your
 frontend functions, transforms intermediate data locally, and returns only the
@@ -27,13 +26,8 @@ final result.
 This approach aligns with the code execution patterns described by Cloudflare's
 [Code Mode](https://blog.cloudflare.com/code-mode/) and Anthropic's
 [Code Execution](https://www.anthropic.com/engineering/code-execution-with-mcp):
-move orchestration into code, keep tool surfaces small, and reduce unnecessary
-token usage. It effectively operates as a secure code interpreter for your
-frontend.
-
-While MCP provides a unified interface, maintaining complex tool definitions
-often introduces unnecessary friction. Exposing functions directly from your
-TypeScript or JavaScript codebase offers a more direct developer experience.
+move orchestration into code, keep tool surfaces small, reduce unnecessary token
+usage. It effectively operates as a secure code interpreter for your frontend.
 
 |                       | Traditional Tool Calling          | FunctionBridge                                    |
 | --------------------- | --------------------------------- | ------------------------------------------------- |
@@ -42,23 +36,24 @@ TypeScript or JavaScript codebase offers a more direct developer experience.
 | **Branching & loops** | Handled by the model across turns | Expressed directly in TypeScript                  |
 | **Tool surface**      | One schema per operation          | One tool backed by your full frontend API         |
 
+---
+
 ## Installation
 
 ```bash
 npm install functionbridge zod
 ```
 
+---
+
 ## Requirements
 
-- **Environment:** Runs in any modern browser.
-- **Frameworks:** Framework-agnostic — works with React, Vue, Svelte, or Vanilla
-  JS.
-- **Bundlers:** Compatible with Vite, Webpack, and Next.js (Client Components).
+- **Environment:** Modern browsers
+- **Frameworks:** React, Vue, Svelte, or Vanilla JS
+
+---
 
 ## How it works
-
-FunctionBridge creates an MCP endpoint backed by a browser-hosted execution
-environment:
 
 1. Your application registers frontend functions.
 2. FunctionBridge exposes a single MCP tool: `execute_typescript_code`.
@@ -67,9 +62,7 @@ environment:
    functions you registered.
 5. Function results and console output are returned as a single tool response.
 
-This lets the model perform filtering, mapping, aggregation, branching, and
-multi-step orchestration locally in the browser instead of across multiple tool
-calls.
+---
 
 ## Usage
 
@@ -77,117 +70,126 @@ calls.
 import { FunctionBridge } from "functionbridge";
 import { z } from "zod/v4";
 
-// 1. Create the bridge
 const bridge = new FunctionBridge();
 
-// 2. Register frontend capabilities
 bridge.addFunction(
-  "getLowStockItems",
-  () => items.filter((i) => i.stock < 5),
-  "getLowStockItems(): Item[] — returns items with stock below 5",
+  "getAllTransactions",
+  () => db.transactions.toArray(),
+  "getAllTransactions(): Promise<Transaction[]>",
   z.object({}),
 );
 
 bridge.addFunction(
-  "updateInventory",
-  (id: string, qty: number) => {/* your UI/state logic */},
-  "updateInventory(id: string, qty: number): void — updates item quantity",
-  z.object({ id: z.string(), qty: z.number() }),
+  "showChart",
+  (config: ChartConfig) => renderChart(config),
+  "showChart(config: ChartConfig): void",
+  z.object({ config: z.any() }),
 );
 
-// 3. Pass this URL to your backend LLM or MCP client
+bridge.addFunction(
+  "notifyUser",
+  (message: string) => toast(message),
+  "notifyUser(message: string): void",
+  z.object({ message: z.string() }),
+);
+
+// Pass this URL to your backend LLM or MCP client
 const url = bridge.mcpServerUrl;
 ```
 
-An MCP client connected to this URL will see a single tool,
-`execute_typescript_code`. Instead of calling `getLowStockItems` and
-`updateInventory` as separate tool calls, the model can express the entire
-workflow in one program:
+A model connected to this URL sees a single tool: `execute_typescript_code`.
+Instead of calling each function as a separate tool call, it expresses the
+entire workflow in one program:
 
 ```typescript
-const lowStock = await getLowStockItems();
-for (const item of lowStock) {
-  if (item.category === "essential") {
-    await updateInventory(item.id, 100);
-  }
+const transactions = await getAllTransactions();
+
+const now = new Date();
+const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+const end = new Date(now.getFullYear(), now.getMonth(), 0);
+
+const filtered = transactions.filter((t) => {
+  const d = new Date(t.date);
+  return d >= start && d <= end;
+});
+
+const totals = {};
+for (const t of filtered) {
+  totals[t.category] ??= 0;
+  totals[t.category] += t.amount;
 }
-return `Restocked ${lowStock.length} essential items.`;
+
+const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+
+await showChart({
+  type: "bar",
+  data: sorted.map(([category, amount]) => ({ category, amount })),
+});
+
+return `Your highest spending category last month was ${sorted[0][0]}.`;
 ```
 
-Filtering, branching, and iteration all happen inside the browser. Only the
-final result is returned to the model.
+Filtering, aggregation, and rendering all happen inside the browser. Only the
+final result returns to the model.
 
-## Why this model works well
+---
 
-Because the model is writing code instead of chaining many individual tools, it
-can:
+## Why this works well
 
-- **Combine multiple frontend functions** in one execution, expressing
-  conditional logic and iteration without a multi-turn loop.
-- **Keep intermediate data in the browser** — large local datasets are filtered
-  and transformed before any result is returned to the model.
-- **Reduce round trips** — complex workflows become a single generated program
+- **Fewer round trips** — complex workflows become a single generated program
   rather than many sequential tool calls.
-- **Reuse existing frontend code** directly, including authenticated API calls
-  made on the user's behalf, so teams avoid duplicating the same logic in
-  backend services.
-- **Work against browser-only resources** such as in-memory state, IndexedDB, UI
-  logic, and authenticated API clients already available in the application.
+- **Data stays local** — large datasets are filtered and transformed before any
+  result is returned to the model.
+- **Reuses existing frontend code** — including authenticated API clients, so
+  teams avoid duplicating the same logic in backend services.
+- **Works against browser-only resources** — in-memory state, IndexedDB, UI
+  logic, and session-scoped API clients already available in the application.
+
+---
 
 ## Architecture
 
 FunctionBridge builds on [FrontendMCP](https://github.com/failip/frontendmcp)
 and isolates execution from the host application:
 
-1. **Sandboxed execution** LLM-generated code runs in a hidden, cross-origin
-   `iframe` with a restrictive Content Security Policy. This isolates execution
-   from the main application context.
+1. **Sandboxed execution** — LLM-generated code runs in a hidden, cross-origin
+   `iframe` with a restrictive Content Security Policy.
+2. **Registered function access** — only functions explicitly registered through
+   `addFunction(...)` are exposed. The model does not gain arbitrary access to
+   your application.
+3. **RPC bridge** — Comlink calls registered functions on the main thread from
+   inside the sandbox, providing a controlled interface between execution and
+   the host.
+4. **MCP relay** — FrontendMCP exposes the browser-resident server to external
+   MCP clients through a standard endpoint.
 
-2. **Registered function access** Only functions explicitly registered through
-   `addFunction(...)` are exposed to the execution environment. The model does
-   not gain arbitrary access to your application.
+---
 
-3. **RPC bridge** `Comlink` is used to call registered functions on the main
-   thread from inside the sandbox. This provides a controlled interface between
-   execution and the host application.
+## Use cases
 
-4. **MCP relay** `FrontendMCP` exposes the browser-resident server to external
-   MCP clients so backend agents can invoke the single execution tool through a
-   standard MCP endpoint.
-
-## Typical use cases
-
-- **Local data analysis** Query IndexedDB, local caches, or browser-managed data
-  and return only the subset relevant to the user request.
-
-- **UI orchestration** Trigger a sequence of frontend actions, state reads, and
+- **Local data analysis** — query IndexedDB, local caches, or browser-managed
+  data and return only the relevant subset.
+- **UI orchestration** — trigger sequences of frontend actions, state reads, and
   updates in a single generated script.
+- **Authenticated backend operations** — call frontend functions that already
+  wrap backend endpoints using the current user's session, without a separate
+  orchestration layer.
+- **Natural language to action** — convert user instructions into structured
+  client-side workflows.
+- **Privacy-sensitive workflows** — intermediate values never leave the browser;
+  only the final result is returned.
 
-- **Authenticated backend operations** Call frontend functions that already wrap
-  backend endpoints using the current user's session, cookies, or access token.
-  This allows the LLM to perform user-scoped backend actions without requiring a
-  separate orchestration layer to re-implement authentication and request logic.
+---
 
-- **Natural language to action pipelines** Convert user instructions into
-  structured client-side workflows without building custom parsers for every
-  command.
+## Execution constraints
 
-- **Privacy-sensitive workflows** Keep intermediate values inside the browser
-  while returning only the final, necessary output to the model.
+- Code runs in an isolated sandbox.
+- Access is limited to registered functions only.
+- No arbitrary DOM access.
+- Network access can be restricted by sandbox policy.
+- Inputs can be validated with `zod` schemas on registered functions.
 
-## Execution model and constraints
-
-FunctionBridge is intended to provide controlled execution, not unrestricted
-browser automation.
-
-- Code runs in an isolated sandbox
-- Access is limited to the functions you register
-- The sandbox does not directly expose arbitrary DOM access
-- Network access can be restricted by sandbox policy
-- Input validation can be enforced with `zod` schemas on registered functions
-
-This design gives you a narrow, auditable integration layer while still letting
-the model express complex logic in code.
+---
 
 ## Contributing
 
