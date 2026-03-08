@@ -4,13 +4,12 @@
 <picture>
 <img src="./docs/assets/functionbridge-wordmark.svg" alt="FunctionBridge Logo" width="500"/>
 </picture>
-
+<div align="left">
 <a href="https://www.npmjs.com/package/functionbridge">
 <img src="https://img.shields.io/npm/v/functionbridge" alt="npm version" />
 </a>
 </div>
-
----
+</div>
 
 ## Overview
 
@@ -23,20 +22,18 @@ programmable execution environment. The model writes code that coordinates your
 frontend functions, transforms intermediate data locally, and returns only the
 final result.
 
-This approach aligns with the code execution patterns described by Cloudflare's
+This follows the code execution pattern described by Cloudflare's
 [Code Mode](https://blog.cloudflare.com/code-mode/) and Anthropic's
 [Code Execution](https://www.anthropic.com/engineering/code-execution-with-mcp):
-move orchestration into code, keep tool surfaces small, reduce unnecessary token
-usage. It effectively operates as a secure code interpreter for your frontend.
+keep the interface small, move orchestration into code, and keep intermediate
+data local.
 
-|                       | Traditional Tool Calling          | FunctionBridge                                    |
-| --------------------- | --------------------------------- | ------------------------------------------------- |
-| **Round trips**       | One per function call             | Single execution for complex logic                |
-| **Intermediate data** | Sent back to the LLM at each step | Stays in the browser; only the result is returned |
-| **Branching & loops** | Handled by the model across turns | Expressed directly in TypeScript                  |
-| **Tool surface**      | One schema per operation          | One tool backed by your full frontend API         |
-
----
+| Feature                 | Traditional Tool Calling | FunctionBridge       |
+| ----------------------- | ------------------------ | -------------------- |
+| **Round trips**         | One per function call    | Single execution     |
+| **Intermediate data**   | Returned at each step    | Stays in the browser |
+| **Branching and loops** | Managed across turns     | Written in code      |
+| **Tool surface**        | One schema per operation | One execution tool   |
 
 ## Installation
 
@@ -44,14 +41,10 @@ usage. It effectively operates as a secure code interpreter for your frontend.
 npm install functionbridge zod
 ```
 
----
-
 ## Requirements
 
 - **Environment:** Modern browsers
 - **Frameworks:** React, Vue, Svelte, or Vanilla JS
-
----
 
 ## How it works
 
@@ -61,8 +54,6 @@ npm install functionbridge zod
 4. That code runs in a sandboxed browser context with access only to the
    functions you registered.
 5. Function results and console output are returned as a single tool response.
-
----
 
 ## Usage
 
@@ -97,7 +88,12 @@ bridge.addFunction(
 const url = bridge.mcpServerUrl;
 ```
 
-A model connected to this URL sees a single tool: `execute_typescript_code`.
+A client connected to this URL sees one tool: `execute_typescript_code`.
+
+Example request:
+
+> Where did I spend the most money last month? Show me a chart.
+
 Instead of calling each function as a separate tool call, it expresses the
 entire workflow in one program:
 
@@ -132,54 +128,42 @@ return `Your highest spending category last month was ${sorted[0][0]}.`;
 Filtering, aggregation, and rendering all happen inside the browser. Only the
 final result returns to the model.
 
----
+## Why this structure works
 
-## Why this works well
-
-- **Fewer round trips** — complex workflows become a single generated program
+- **Fewer round trips**: complex workflows become a single generated program
   rather than many sequential tool calls.
-- **Data stays local** — large datasets are filtered and transformed before any
+- **Data stays local**: large datasets are filtered and transformed before any
   result is returned to the model.
-- **Reuses existing frontend code** — including authenticated API clients, so
+- **Reuses existing frontend code**: including authenticated API clients, so
   teams avoid duplicating the same logic in backend services.
-- **Works against browser-only resources** — in-memory state, IndexedDB, UI
+- **Works against browser-only resources**: in-memory state, IndexedDB, UI
   logic, and session-scoped API clients already available in the application.
-
----
 
 ## Architecture
 
 FunctionBridge builds on [FrontendMCP](https://github.com/failip/frontendmcp)
 and isolates execution from the host application:
 
-1. **Sandboxed execution** — LLM-generated code runs in a hidden, cross-origin
+1. **Sandboxed execution**: LLM-generated code runs in a hidden, cross-origin
    `iframe` with a restrictive Content Security Policy.
-2. **Registered function access** — only functions explicitly registered through
+2. **Registered function access**: only functions explicitly registered through
    `addFunction(...)` are exposed. The model does not gain arbitrary access to
    your application.
-3. **RPC bridge** — Comlink calls registered functions on the main thread from
-   inside the sandbox, providing a controlled interface between execution and
-   the host.
-4. **MCP relay** — FrontendMCP exposes the browser-resident server to external
+3. **RPC bridge**: Comlink calls registered functions on the main thread from
+   inside the sandbox.
+4. **MCP relay**: FrontendMCP exposes the browser-resident server to external
    MCP clients through a standard endpoint.
-
----
 
 ## Use cases
 
-- **Local data analysis** — query IndexedDB, local caches, or browser-managed
-  data and return only the relevant subset.
-- **UI orchestration** — trigger sequences of frontend actions, state reads, and
-  updates in a single generated script.
-- **Authenticated backend operations** — call frontend functions that already
-  wrap backend endpoints using the current user's session, without a separate
-  orchestration layer.
-- **Natural language to action** — convert user instructions into structured
-  client-side workflows.
-- **Privacy-sensitive workflows** — intermediate values never leave the browser;
-  only the final result is returned.
-
----
+- **Local data analysis**: query IndexedDB, local caches, or browser-managed
+  data.
+- **UI orchestration**: trigger state reads, updates, and UI actions in one
+  script.
+- **Authenticated backend operations**: call frontend functions that already use
+  the current user's session.
+- **Natural language to action**: translate requests into client-side workflows.
+- **Privacy-sensitive workflows**: keep intermediate values in the browser.
 
 ## Execution constraints
 
@@ -188,8 +172,6 @@ and isolates execution from the host application:
 - No arbitrary DOM access.
 - Network access can be restricted by sandbox policy.
 - Inputs can be validated with `zod` schemas on registered functions.
-
----
 
 ## Contributing
 
