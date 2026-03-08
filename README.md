@@ -1,16 +1,14 @@
 # FunctionBridge
 
 <div align="center">
-  <div style="width:500px;">
     <picture>
       <img src="./docs/assets/functionbridge-wordmark.svg" alt="FunctionBridge Logo" width="500"/>
     </picture>
-    <div style="text-align:left; margin-top:8px;" align="left">
+    <div align="left">
       <a href="https://www.npmjs.com/package/functionbridge">
         <img src="https://img.shields.io/npm/v/functionbridge" alt="npm version" />
       </a>
     </div>
-  </div>
 </div>
 
 ## Overview
@@ -30,13 +28,32 @@ This approach aligns with the code execution patterns described by Cloudflare's
 [Code Mode](https://blog.cloudflare.com/code-mode/) and Anthropic's
 [Code Execution](https://www.anthropic.com/engineering/code-execution-with-mcp):
 move orchestration into code, keep tool surfaces small, and reduce unnecessary
-token usage.
+token usage. It effectively operates as a secure code interpreter for your
+frontend.
+
+While MCP provides a unified interface, maintaining complex tool definitions
+often introduces unnecessary friction. Exposing functions directly from your
+TypeScript or JavaScript codebase offers a more direct developer experience.
+
+|                       | Traditional Tool Calling          | FunctionBridge                                    |
+| --------------------- | --------------------------------- | ------------------------------------------------- |
+| **Round trips**       | One per function call             | Single execution for complex logic                |
+| **Intermediate data** | Sent back to the LLM at each step | Stays in the browser; only the result is returned |
+| **Branching & loops** | Handled by the model across turns | Expressed directly in TypeScript                  |
+| **Tool surface**      | One schema per operation          | One tool backed by your full frontend API         |
 
 ## Installation
 
 ```bash
-npm install functionbridge
+npm install functionbridge zod
 ```
+
+## Requirements
+
+- **Environment:** Runs in any modern browser.
+- **Frameworks:** Framework-agnostic — works with React, Vue, Svelte, or Vanilla
+  JS.
+- **Bundlers:** Compatible with Vite, Webpack, and Next.js (Client Components).
 
 ## How it works
 
@@ -58,32 +75,24 @@ calls.
 
 ```typescript
 import { FunctionBridge } from "functionbridge";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 // 1. Create the bridge
 const bridge = new FunctionBridge();
 
 // 2. Register frontend capabilities
 bridge.addFunction(
-  "getUserData",
-  async () => {
-    // Access local state, IndexedDB, application stores, etc.
-    return { id: 1, name: "Alice", role: "admin" };
-  },
-  "/** Returns the current user record. */",
+  "getLowStockItems",
+  () => items.filter((i) => i.stock < 5),
+  "getLowStockItems(): Item[] — returns items with stock below 5",
+  z.object({}),
 );
 
 bridge.addFunction(
-  "updateUIPanel",
-  async ({ panelId, status }) => {
-    document.getElementById(panelId).innerText = status;
-    return { success: true };
-  },
-  "/** Updates a UI panel with a new status value. */",
-  z.object({
-    panelId: z.string(),
-    status: z.string(),
-  }),
+  "updateInventory",
+  (id: string, qty: number) => {/* your UI/state logic */},
+  "updateInventory(id: string, qty: number): void — updates item quantity",
+  z.object({ id: z.string(), qty: z.number() }),
 );
 
 // 3. Pass this URL to your backend LLM or MCP client
@@ -91,32 +100,39 @@ const url = bridge.mcpServerUrl;
 ```
 
 An MCP client connected to this URL will see a single tool,
-`execute_typescript_code`, and can run code such as:
+`execute_typescript_code`. Instead of calling `getLowStockItems` and
+`updateInventory` as separate tool calls, the model can express the entire
+workflow in one program:
 
 ```typescript
-const user = await getUserData();
-
-if (user.role === "admin") {
-  await updateUIPanel({
-    panelId: "admin-panel",
-    status: "Active",
-  });
+const lowStock = await getLowStockItems();
+for (const item of lowStock) {
+  if (item.category === "essential") {
+    await updateInventory(item.id, 100);
+  }
 }
-
-return `Updated UI for ${user.name}`;
+return `Restocked ${lowStock.length} essential items.`;
 ```
 
-## What this enables
+Filtering, branching, and iteration all happen inside the browser. Only the
+final result is returned to the model.
+
+## Why this model works well
 
 Because the model is writing code instead of chaining many individual tools, it
 can:
 
-- Combine multiple frontend functions in one execution
-- Filter and transform large local datasets before returning a result
-- Perform conditional logic and iteration without a multi-turn loop
-- Keep intermediate client-side data inside the browser runtime
-- Work against browser-only resources such as in-memory state, IndexedDB, UI
-  logic, and authenticated API clients already available in the application
+- **Combine multiple frontend functions** in one execution, expressing
+  conditional logic and iteration without a multi-turn loop.
+- **Keep intermediate data in the browser** — large local datasets are filtered
+  and transformed before any result is returned to the model.
+- **Reduce round trips** — complex workflows become a single generated program
+  rather than many sequential tool calls.
+- **Reuse existing frontend code** directly, including authenticated API calls
+  made on the user's behalf, so teams avoid duplicating the same logic in
+  backend services.
+- **Work against browser-only resources** such as in-memory state, IndexedDB, UI
+  logic, and authenticated API clients already available in the application.
 
 ## Architecture
 
@@ -138,29 +154,6 @@ and isolates execution from the host application:
 4. **MCP relay** `FrontendMCP` exposes the browser-resident server to external
    MCP clients so backend agents can invoke the single execution tool through a
    standard MCP endpoint.
-
-## Why this model works well
-
-Traditional tool-calling often becomes inefficient as the number of frontend
-capabilities grows:
-
-- **Smaller tool surface** Instead of exposing many individual operations, you
-  expose one execution tool backed by your own frontend API surface.
-
-- **Lower token usage** Intermediate results can be processed inside the browser
-  and do not need to be repeatedly serialized back into the model context.
-
-- **Fewer round trips** Complex workflows can be expressed as one generated
-  program instead of many sequential tool calls.
-
-- **Simpler architecture** Orchestration remains in the client, reducing the
-  need for custom backend agents or middleware to coordinate UI and local state
-  operations.
-
-- **Better developer experience** Existing frontend code can be reused directly,
-  including authenticated API calls made on the user's behalf from the browser,
-  so teams can implement new AI-driven workflows without duplicating the same
-  logic in backend services.
 
 ## Typical use cases
 
