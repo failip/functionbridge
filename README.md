@@ -56,6 +56,22 @@ import { z } from "zod/v4";
 
 const bridge = new FunctionBridge();
 
+bridge.addTypeDefinition(`
+type Transaction = {
+  id: string;
+  date: string;
+  amount: number;
+  category: string;
+};
+`);
+
+bridge.addTypeDefinition(`
+type ChartConfig = {
+  type: "bar" | "line" | "pie";
+  data: any;
+};
+`);
+
 bridge.addFunction(
   "getAllTransactions",
   () => db.transactions.toArray(),
