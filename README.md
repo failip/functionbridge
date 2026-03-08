@@ -28,13 +28,6 @@ This follows the code execution pattern described by Cloudflare's
 keep the interface small, move orchestration into code, and keep intermediate
 data local.
 
-| Feature                 | Traditional Tool Calling | FunctionBridge       |
-| ----------------------- | ------------------------ | -------------------- |
-| **Round trips**         | One per function call    | Single execution     |
-| **Intermediate data**   | Returned at each step    | Stays in the browser |
-| **Branching and loops** | Managed across turns     | Written in code      |
-| **Tool surface**        | One schema per operation | One execution tool   |
-
 ## Installation
 
 ```bash
@@ -128,7 +121,14 @@ return `Your highest spending category last month was ${sorted[0][0]}.`;
 Filtering, aggregation, and rendering all happen inside the browser. Only the
 final result returns to the model.
 
-## Why this structure works
+## Advantages
+
+| Feature                 | Traditional Tool Calling | FunctionBridge       |
+| ----------------------- | ------------------------ | -------------------- |
+| **Round trips**         | One per function call    | Single execution     |
+| **Intermediate data**   | Returned at each step    | Stays in the browser |
+| **Branching and loops** | Managed across turns     | Written in code      |
+| **Tool surface**        | One schema per operation | One execution tool   |
 
 - **Fewer round trips**: complex workflows become a single generated program
   rather than many sequential tool calls.
