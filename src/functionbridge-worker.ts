@@ -45,13 +45,13 @@ export class FunctionBridgeWorker {
 			this.mcpServer = mcpServer;
 
 			this.mcpServer.registerTool(
-				'execute_typescript_code',
+				'execute_javascript_code',
 				{
-					title: 'Execute Typescript Code',
+					title: 'Execute Javascript Code',
 					description:
 						'Errors if the code is invalid or fails to execute. Returns the result of the code execution.',
 					inputSchema: z.object({
-						code: z.string().describe('The typescript code to execute.')
+						code: z.string().describe('The javascript code to execute.')
 					})
 				},
 				async (args: any) => {

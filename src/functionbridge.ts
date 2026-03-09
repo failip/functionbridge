@@ -21,7 +21,13 @@ export class FunctionBridge {
 	constructor(settings?: FunctionBridgeSettings) {
 		this.uuid = crypto.randomUUID();
 		this.authorizationToken = crypto.randomUUID();
+
+		// Sandboxed iframe
 		this.iframe = document.createElement('iframe');
+		this.iframe.sandbox.add('allow-scripts');
+		this.iframe.allow = "camera 'none'; microphone 'none'; geolocation 'none'";
+		this.iframe.referrerPolicy = 'no-referrer';
+
 		this.iframe.src = settings?.functionBridgeWorkerUrl ?? 'https://functionbridge.com/worker';
 		if (new URL(this.iframe.src).origin === window.location.origin) {
 			console.warn('FunctionBridge worker must be served from a different origin.');
@@ -86,6 +92,11 @@ export class FunctionBridge {
 		this.subscribers.forEach((callback) => callback(name));
 	}
 
+	public removeFunction(name: string): void {
+		this.functions.delete(name);
+		this.functionDocs.delete(name);
+	}
+
 	public addTypeDefinition(typeDef: string): void {
 		this.typeDefinitions.push(typeDef);
 	}
@@ -97,12 +108,13 @@ export class FunctionBridge {
 	}
 
 	public functionDocumentation(): string {
-		let docs = '';
+		let docs =
+			'In the Javascript execution environment, you have access to the following functions:\n\n';
 		this.typeDefinitions.forEach((typeDef) => {
 			docs += `${typeDef}\n\n`;
 		});
 		this.functionDocs.forEach((doc, name) => {
-			docs += `${doc}\nasync ${name}\n\n`;
+			docs += `${doc ?? `async ${name}()`}\n\n`;
 		});
 		return docs;
 	}
