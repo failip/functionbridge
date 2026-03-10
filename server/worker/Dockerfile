@@ -6,7 +6,9 @@ WORKDIR /app
 RUN apk add --no-cache brotli zstd gzip
 
 # Copy project files and install dependencies
-COPY . .
+COPY worker.html worker.html
+COPY package.json package.json
+COPY vite.config.js vite.config.js
 RUN npm install
 RUN npm run build
 

@@ -28,7 +28,7 @@ export class FunctionBridge {
 		this.iframe.allow = "camera 'none'; microphone 'none'; geolocation 'none'";
 		this.iframe.referrerPolicy = 'no-referrer';
 
-		this.iframe.src = settings?.functionBridgeWorkerUrl ?? 'https://functionbridge.com/worker';
+		this.iframe.src = settings?.functionBridgeWorkerUrl ?? 'https://worker.functionbridge.com/worker';
 		if (new URL(this.iframe.src).origin === window.location.origin) {
 			console.warn('FunctionBridge worker must be served from a different origin.');
 		}
