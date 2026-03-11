@@ -24,9 +24,9 @@ export class FunctionBridge {
 
 		// Sandboxed iframe
 		this.iframe = document.createElement('iframe');
-		this.iframe.sandbox.add('allow-scripts');
-		this.iframe.allow = "camera 'none'; microphone 'none'; geolocation 'none'";
-		this.iframe.referrerPolicy = 'no-referrer';
+		// this.iframe.sandbox.add('allow-scripts');
+		// this.iframe.allow = "camera 'none'; microphone 'none'; geolocation 'none'";
+		// this.iframe.referrerPolicy = 'no-referrer';
 
 		this.iframe.src = settings?.functionBridgeWorkerUrl ?? 'https://worker.functionbridge.com/worker';
 		if (new URL(this.iframe.src).origin === window.location.origin) {
@@ -57,7 +57,8 @@ export class FunctionBridge {
 				for (const name of this.functions.keys()) {
 					callback(name);
 				}
-			}
+			},
+			getFunctionDocumentation: async () => this.functionDocumentation()
 		};
 
 		const onMessage = (event: MessageEvent) => {

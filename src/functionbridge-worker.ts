@@ -8,6 +8,7 @@ export class FunctionBridgeWorker {
 	private uuid: string | null = null;
 	private authorizationToken: string | null = null;
 	private mcpServer: FrontendMCPServer | null = null;
+	private tool;
 
 	constructor() {
 		window.addEventListener('message', this.handleMessage.bind(this));
@@ -26,10 +27,14 @@ export class FunctionBridgeWorker {
 			this.port = event.ports[0];
 			const remoteHost: any = Comlink.wrap(this.port);
 			remoteHost.subscribe(
-				Comlink.proxy((name: string) => {
+				Comlink.proxy(async (name: string) => {
 					this.functions[name] = async (...args: any[]) => {
 						return await remoteHost.runFunction(name, args);
 					};
+					if (this.tool) {
+						this.tool.description = await remoteHost.getFunctionDocumentation();
+					}
+					console.log(`Registered function from host: ${name}`);
 				})
 			);
 
@@ -44,7 +49,7 @@ export class FunctionBridgeWorker {
 
 			this.mcpServer = mcpServer;
 
-			this.mcpServer.registerTool(
+			this.tool = this.mcpServer.registerTool(
 				'execute_javascript_code',
 				{
 					title: 'Execute Javascript Code',
