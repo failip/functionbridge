@@ -11,7 +11,16 @@
 </div>
 </div>
 
+### A programmable client-side execution environment for Large Language Models.
+
 ## Overview
+
+Instead of defining tools you define types and functions to expose to your llm.
+
+the llm writes code that calls those functions
+
+easier than tool calling, directly in the frontend, less round trips, more
+powerful, can use existing frontend code and resources
 
 FunctionBridge enables LLMs to execute TypeScript and JavaScript in a secure
 browser sandbox and interact with frontend functionality through explicitly
@@ -28,27 +37,32 @@ This follows the code execution pattern described by Cloudflare's
 keep the interface small, move orchestration into code, and keep intermediate
 data local.
 
+Code execution usually runs in the backend, this is "expensive" in terms of
+compute cost, latency, and data transfer. instead of using your backend as an
+execution environment, you can use the clients browser, scaling for free, with
+access to local data and resources, and a direct connection to the user.
+
+Frontend only development workflow is way faster, you can iterate on your
+functions and types without needing to redeploy a backend, and you can reuse
+existing frontend code and resources like authenticated API clients, in-memory
+state, IndexedDB, and UI logic.
+
+Builds on top of the MCP protocol, so it works with any LLM or agent framework
+that supports MCP tools. Only one tool is exposed: `execute_javascript_code`.
+
+Builds on top of [FrontendMCP](https://github.com/failip/frontendmcp) so you
+instantely get a globally accessible FrontendMCP server with no additional
+setup.
+
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
+
 ## Installation
 
 ```bash
 npm install functionbridge zod
 ```
 
-## Requirements
-
-- **Environment:** Modern browsers
-- **Frameworks:** React, Vue, Svelte, or Vanilla JS
-
-## How it works
-
-1. Your application registers frontend functions.
-2. FunctionBridge exposes a single MCP tool: `execute_typescript_code`.
-3. An LLM connects through MCP and sends TypeScript or JavaScript to execute.
-4. That code runs in a sandboxed browser context with access only to the
-   functions you registered.
-5. Function results and console output are returned as a single tool response.
-
-## Usage
+## Example
 
 ```typescript
 import { FunctionBridge } from "functionbridge";
@@ -137,6 +151,32 @@ return `Your highest spending category last month was ${sorted[0][0]}.`;
 Filtering, aggregation, and rendering all happen inside the browser. Only the
 final result returns to the model.
 
+## Architecture
+
+FunctionBridge uses a hidden, cross-origin `iframe` with a restrictive Content
+Security Policy to execute LLM-generated as isolated as possible. The main
+application registers functions in that sandbox using `addFunction(...)`, and
+the model can call those functions from its generated code. The bridge uses
+Comlink to facilitate communication between the sandbox and the main thread,
+ensuring that only registered functions are accessible. The entire execution
+environment is exposed as a single MCP tool, allowing LLMs to orchestrate
+complex workflows in the browser with minimal round trips. The MCP server is
+built upon FrontendMCP, so it can be easily integrated into existing
+applications without additional backend setup.
+
+FunctionBridge builds on [FrontendMCP](https://github.com/failip/frontendmcp)
+and [Comlink](https://github.com/GoogleChromeLabs/comlink).
+
+1. **Sandboxed execution**: LLM-generated code runs in a hidden, cross-origin
+   `iframe` with a restrictive Content Security Policy.
+2. **Registered function access**: only functions explicitly registered through
+   `addFunction(...)` are exposed. The model does not gain arbitrary access to
+   your application.
+3. **RPC bridge**: Comlink calls registered functions on the main thread from
+   inside the sandbox.
+4. **MCP relay**: FrontendMCP exposes the browser-resident server to external
+   MCP clients through a standard endpoint.
+
 ## Advantages
 
 | Feature                 | Traditional Tool Calling | FunctionBridge       |
@@ -155,39 +195,36 @@ final result returns to the model.
 - **Works against browser-only resources**: in-memory state, IndexedDB, UI
   logic, and session-scoped API clients already available in the application.
 
-## Architecture
-
-FunctionBridge builds on [FrontendMCP](https://github.com/failip/frontendmcp)
-and isolates execution from the host application:
-
-1. **Sandboxed execution**: LLM-generated code runs in a hidden, cross-origin
-   `iframe` with a restrictive Content Security Policy.
-2. **Registered function access**: only functions explicitly registered through
-   `addFunction(...)` are exposed. The model does not gain arbitrary access to
-   your application.
-3. **RPC bridge**: Comlink calls registered functions on the main thread from
-   inside the sandbox.
-4. **MCP relay**: FrontendMCP exposes the browser-resident server to external
-   MCP clients through a standard endpoint.
-
 ## Use cases
 
-- **Local data analysis**: query IndexedDB, local caches, or browser-managed
-  data.
-- **UI orchestration**: trigger state reads, updates, and UI actions in one
-  script.
-- **Authenticated backend operations**: call frontend functions that already use
-  the current user's session.
-- **Natural language to action**: translate requests into client-side workflows.
-- **Privacy-sensitive workflows**: keep intermediate values in the browser.
+- Natual language interfaces for frontend applications, allowing users to
+  interact with complex data and functionality through conversational queries.
+- Agents that can perform multi-step workflows in the browser, such as data
+  analysis, report generation, or UI manipulation.
+- Extending LLM capabilities with access to browser-only resources like
+  IndexedDB, in-memory state, or authenticated API clients.
+
+## Limitations
+
+- Only serializable data can be passed over the Comlink bridge, complex objects
+  with methods or circular references are not supported.
+- Larger code executions may hit token limits or timeouts depending on the LLM
+  and MCP client configuration.
 
 ## Execution constraints
 
 - Code runs in an isolated sandbox.
 - Access is limited to registered functions only.
-- No arbitrary DOM access.
-- Network access can be restricted by sandbox policy.
-- Inputs can be validated with `zod` schemas on registered functions.
+- No access to the main thread's scope, DOM, or global objects unless explicitly
+  exposed through registered functions.
+- Network access completely restricted by sandbox policy.
+
+## Goals
+
+- Easiest way for developers to expose application functionality to LLMs.
+- Be as token- and latency-efficient as possible.
+- Secure by default with strong isolation and explicit function registration.
+- Framework-agnostic and easy to integrate into existing applications.
 
 ## Contributing
 
